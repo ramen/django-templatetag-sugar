@@ -104,6 +104,54 @@ class Optional(Parsable):
         return result
 
 
+class Sequence(NamedParsable):
+    def __init__(self, part, name=None):
+        self.name = name
+        self.part = part
+
+    def syntax(self):
+        return "[%s]..." % self.part.syntax()
+
+    def parse(self, parser, bits):
+        result = []
+        while True:
+            try:
+                val = self.part.parse(parser, bits)
+                if val is None:
+                    continue
+                result.extend(x[2] for x in val)
+            except (TemplateSyntaxError, IndexError):
+                break
+        return [(self, self.name, result)]
+
+
+class Choice(NamedParsable):
+    def __init__(self, mapping, name=None):
+        self.mapping = mapping
+        self.name = name
+
+    def syntax(self):
+        return " | ".join("%s %s" % (key, " ".join(part.syntax()
+                                                   for part in self.mapping[key]))
+                          for key in self.mapping)
+
+    def parse(self, parser, bits):
+        if not bits:
+            raise TemplateSyntaxError
+        result = []
+        if bits[0] in self.mapping:
+            key = bits.popleft()
+            for part in self.mapping[key]:
+                val = part.parse(parser, bits)
+                if val is None:
+                    continue
+                result.extend(x[2] for x in val)
+            return [(self, self.name, (key, result))]
+        raise TemplateSyntaxError("[%s] expected, %s found"
+                                  % (" | ".join(key for key in self.mapping),
+                                     bits[0]))
+
+
 class Model(NamedParsable):
     def parse(self, parser, bits):
         bit = bits.popleft()
