@@ -105,24 +105,48 @@ class Optional(Parsable):
 
 
 class Sequence(NamedParsable):
-    def __init__(self, part, name=None):
+    def __init__(self, parts, name=None):
         self.name = name
-        self.part = part
+        self.parts = parts
 
     def syntax(self):
-        return "[%s]..." % self.part.syntax()
+        return "[%s]..." % (" ".join(part.syntax() for part in self.parts))
 
     def parse(self, parser, bits):
-        result = []
-        while True:
-            try:
-                val = self.part.parse(parser, bits)
-                if val is None:
-                    continue
-                result.extend(x[2] for x in val)
-            except (TemplateSyntaxError, IndexError):
-                break
-        return [(self, self.name, result)]
+        results = []
+        valid = True
+        while bits and valid:
+            bits_copy = copy(bits)
+            result = []
+            for part in self.parts:
+                try:
+                    val = part.parse(parser, bits_copy)
+                    if val is None:
+                        continue
+                    result.extend(x[2] for x in val)
+                except (TemplateSyntaxError, IndexError):
+                    valid = False
+                    break
+            if valid:
+                diff = len(bits) - len(bits_copy)
+                for _ in xrange(diff):
+                    bits.popleft()
+                results.append(result)
+            elif result:
+                return None
+        return [(self, self.name, results)]
+
+    def resolve(self, context, value):
+        results = []
+        for seq in value:
+            result = []
+            for item in seq:
+                try:
+                    result.append(item.resolve(context))
+                except AttributeError:
+                    result.append(item)
+            results.append(result)
+        return results
 
 
 class Choice(NamedParsable):

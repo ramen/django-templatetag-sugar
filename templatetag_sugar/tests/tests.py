@@ -87,3 +87,27 @@ class SugarTestCase(TestCase):
             Context(),
             "None, 100",
         )
+
+    def test_sequence(self):
+        self.assert_renders(
+            """{% load test_tags %}{% test_tag_5 %}""",
+            Context(),
+            "{}",
+        )
+
+        self.assert_renders(
+            """{% load test_tags %}{% test_tag_5 width 100 height 200 %}""",
+            Context(),
+            "{width: 100, height: 200}",
+        )
+
+        self.assert_renders(
+            """{% load test_tags %}{% test_tag_5 width w height h %}""",
+            Context({"w": 100, "h": 200}),
+            "{width: 100, height: 200}",
+        )
+
+        self.assert_syntax_error(
+            """{% load test_tags %}{% test_tag_5 width 100 height %}""",
+            "test_tag_5 has the following syntax: {% test_tag_5 [<name> <value>]... %}"
+        )

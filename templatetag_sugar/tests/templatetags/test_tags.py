@@ -1,7 +1,7 @@
 from django import template
 
 from templatetag_sugar.register import tag
-from templatetag_sugar.parser import Name, Variable, Constant, Optional, Model
+from templatetag_sugar.parser import Name, Variable, Constant, Optional, Sequence, Model
 
 register = template.Library()
 
@@ -29,3 +29,7 @@ def test_tag_3(context, val):
 @tag(register, [Optional([Constant("width"), Variable('width')]), Optional([Constant("height"), Variable('height')])])
 def test_tag_4(context, width=None, height=None):
     return "%s, %s" % (width, height)
+
+@tag(register, [Sequence([Name("name"), Variable("value")])])
+def test_tag_5(context, items):
+    return "{%s}" % (", ".join("%s: %s" % (name, value) for name, value in items))
